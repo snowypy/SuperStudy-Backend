@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 morgan.token('ip', (req: express.Request) => req.connection.remoteAddress || 'N/A');
 morgan.token('api-key', (req: express.Request) => {
@@ -45,7 +45,7 @@ const morganFormat = `
 ${green}:method${reset} 
 ${yellow}:url${reset} 
 ${red}:status${reset} - ${info}:status-desc
-${yellow}- Delay: ${info}response-time ms 
+${yellow}- Delay: ${info}:response-time ms 
 ${yellow}- IP: ${info}:ip${reset} 
 ${yellow}- API Key: ${red}:api-key 
 ${yellow}- Body: ${info}:body

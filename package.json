@@ -4,7 +4,8 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "npx tsc",
+    "production": "node dist/index.js"
   },
   "dependencies": {
     "@nestjs/mongoose": "^10.1.0",
