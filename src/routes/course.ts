@@ -1,3 +1,4 @@
+// src/routes/course.ts
 import express, { Request, Response, NextFunction } from 'express';
 import { MongoClient, ObjectId } from 'mongodb';
 import { AppDataSource } from '../data-source';
@@ -5,11 +6,13 @@ import { Course } from '../entities/Course';
 import { Flashcard } from '../entities/Flashcard';
 import { verifyPassword } from '../utils';
 import { User } from '../entities/User';
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = express.Router();
 const client = new MongoClient(process.env.MONGO_URL || '');
 
-router.post('/:courseId/flashcard', (req: Request, res: Response, next: NextFunction) => {
+router.post('/:courseId/flashcard', async (req: Request, res: Response, next: NextFunction) => {
+    await authMiddleware(req, res, next);
     const handler = async () => {
         const { courseId } = req.params;
         const { title, type, data, question, answer } = req.body;
@@ -35,43 +38,8 @@ router.post('/:courseId/flashcard', (req: Request, res: Response, next: NextFunc
     handler().catch(next);
 });
 
-router.post('/:courseId/invite', (req: Request, res: Response, next: NextFunction) => {
-    const handler = async () => {
-        const { courseId } = req.params;
-        const { email, ownerId } = req.body;
-
-        await client.connect();
-        const database = client.db('superstudy');
-        const courseCollection = database.collection('courses');
-
-        const course = await courseCollection.findOne({ _id: new ObjectId(courseId) });
-
-        if (!course) {
-            return res.status(404).json({ message: 'Course not found' });
-        }
-
-        if (course.ownerId.toString() !== ownerId) {
-            return res.status(403).json({ message: 'Only the owner can invite users' });
-        }
-
-        if (course.visibility) {
-            return res.status(400).json({ message: 'Cannot invite users to a public course' });
-        }
-
-        if (!course.pendingUsers.includes(email)) {
-            course.pendingUsers.push(email);
-            await courseCollection.updateOne({ _id: new ObjectId(courseId) }, { $set: { pendingUsers: course.pendingUsers } });
-            // [@] Send email to user (SOON)
-            return res.status(200).json({ message: 'User invited successfully' });
-        } else {
-            return res.status(400).json({ message: 'User has already been invited' });
-        }
-    };
-
-    handler().catch(next);
-});
-
-router.delete('/:courseId', (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:courseId', async (req: Request, res: Response, next: NextFunction) => {
+    await authMiddleware(req, res, next);
     const handler = async () => {
         const { courseId } = req.params;
         const { ownerId, password } = req.body;
@@ -83,7 +51,7 @@ router.delete('/:courseId', (req: Request, res: Response, next: NextFunction) =>
 
         const owner = await userCollection.findOne({ _id: new ObjectId(ownerId) });
         if (!owner) {
-            return res.status(404).json({ message: 'Owner not found' });
+            return res.status(404).json({ message: 'User not found' });
         }
 
         const isPasswordValid = await verifyPassword(password, owner.password);
@@ -104,40 +72,8 @@ router.delete('/:courseId', (req: Request, res: Response, next: NextFunction) =>
     handler().catch(next);
 });
 
-router.delete('/:courseId/flashcard/:flashcardId', (req: Request, res: Response, next: NextFunction) => {
-    const handler = async () => {
-        const { courseId, flashcardId } = req.params;
-        const { ownerId, password } = req.body;
-
-        await client.connect();
-        const database = client.db('superstudy');
-        const flashcardCollection = database.collection('flashcards');
-        const userCollection = database.collection('users');
-
-        const owner = await userCollection.findOne({ _id: new ObjectId(ownerId) });
-        if (!owner) {
-            return res.status(404).json({ message: 'Owner not found' });
-        }
-
-        const isPasswordValid = await verifyPassword(password, owner.password);
-        if (!isPasswordValid) {
-            return res.status(403).json({ message: 'Invalid password' });
-        }
-
-        const flashcard = await flashcardCollection.findOne({ _id: new ObjectId(flashcardId), courseId: new ObjectId(courseId) });
-        if (!flashcard) {
-            return res.status(404).json({ message: 'Flashcard not found or you do not have permission to delete it' });
-        }
-
-        await flashcardCollection.deleteOne({ _id: new ObjectId(flashcardId) });
-
-        res.status(200).json({ message: 'Flashcard deleted successfully' });
-    };
-
-    handler().catch(next);
-});
-
-router.put('/:courseId', (req: Request, res: Response, next: NextFunction) => {
+router.put('/:courseId', async (req: Request, res: Response, next: NextFunction) => {
+    await authMiddleware(req, res, next);
     const handler = async () => {
         const { courseId } = req.params;
         const { title, description, visibility } = req.body;
@@ -161,7 +97,8 @@ router.put('/:courseId', (req: Request, res: Response, next: NextFunction) => {
     handler().catch(next);
 });
 
-router.put('/:courseId/flashcard/:flashcardId', (req: Request, res: Response, next: NextFunction) => {
+router.put('/:courseId/flashcard/:flashcardId', async (req: Request, res: Response, next: NextFunction) => {
+    await authMiddleware(req, res, next);
     const handler = async () => {
         const { courseId, flashcardId } = req.params;
         const { title, type, data, question, answer } = req.body;
@@ -182,6 +119,40 @@ router.put('/:courseId/flashcard/:flashcardId', (req: Request, res: Response, ne
 
         res.status(200).json({ message: 'Flashcard updated successfully', flashcard: updatedFlashcard.value });
     };
+    handler().catch(next);
+});
+
+router.delete('/:courseId/flashcard/:flashcardId', async (req: Request, res: Response, next: NextFunction) => {
+    await authMiddleware(req, res, next);
+    const handler = async () => {
+        const { courseId, flashcardId } = req.params;
+        const { ownerId, password } = req.body;
+
+        await client.connect();
+        const database = client.db('superstudy');
+        const flashcardCollection = database.collection('flashcards');
+        const userCollection = database.collection('users');
+
+        const owner = await userCollection.findOne({ _id: new ObjectId(ownerId) });
+        if (!owner) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const isPasswordValid = await verifyPassword(password, owner.password);
+        if (!isPasswordValid) {
+            return res.status(403).json({ message: 'Invalid password' });
+        }
+
+        const flashcard = await flashcardCollection.findOne({ _id: new ObjectId(flashcardId), courseId: new ObjectId(courseId) });
+        if (!flashcard) {
+            return res.status(404).json({ message: 'Flashcard not found or you do not have permission to delete it' });
+        }
+
+        await flashcardCollection.deleteOne({ _id: new ObjectId(flashcardId) });
+
+        res.status(200).json({ message: 'Flashcard deleted successfully' });
+    };
+
     handler().catch(next);
 });
 
