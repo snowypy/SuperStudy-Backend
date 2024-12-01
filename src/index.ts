@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { AppDataSource } from './data-source';
 import accountRoutes from './routes/account';
 import adminRoutes from './routes/admin';
+import courseRoutes from './routes/course';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -67,6 +68,7 @@ app.use(morgan(morganFormat));
 
 app.use('/api/v2/account', accountRoutes);
 app.use('/api/v2/admin', adminRoutes);
+app.use('/api/v2/course', courseRoutes);
 
 AppDataSource.initialize().then(() => {
     const green = '\x1b[38;2;202;247;107m';
