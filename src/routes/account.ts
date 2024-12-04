@@ -117,4 +117,22 @@ router.get('/profile', (req: Request, res: Response, next: NextFunction) => {
     handler().catch(next);
 });
 
+router.post('/user-id', (req: Request, res: Response, next: NextFunction) => {
+    const handler = async () => {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required' });
+
+        await client.connect();
+        const database = client.db('superstudy');
+        const usersCollection = database.collection('users');
+
+        const user = await usersCollection.findOne({ email: email.toString() }, { projection: { _id: 1 } });
+        if (!user) return res.status(400).json({ message: 'User not found' });
+
+        res.status(200).json({ userId: user._id });
+    };
+
+    handler().catch(next);
+});
+
 export default router;

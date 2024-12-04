@@ -1,6 +1,6 @@
 import express from 'express';
 import { MongoClient, ObjectId } from 'mongodb';
-import { validateApiKey } from '../utils';
+import { validateApiKey, verifyPassword } from '../utils';
 import { Request, Response, NextFunction } from 'express';
 
 const router = express.Router();
@@ -48,6 +48,27 @@ router.post('/create-invite', (req: Request, res: Response, next: NextFunction) 
 
         res.status(201).json({ code: inviteCode.code });
     };
+    handler().catch(next);
+});
+
+router.post('/users', async (req: Request, res: Response, next: NextFunction) => {
+    const handler = async () => {
+        const { adminId, password } = req.body;
+
+        await client.connect();
+        const database = client.db('superstudy');
+        const usersCollection = database.collection('users');
+
+        const admin = await usersCollection.findOne({ _id: new ObjectId(adminId), isAdmin: true });
+        if (!admin) return res.status(401).json({ message: 'Unauthorized' });
+
+        const isPasswordValid = await verifyPassword(password, admin.password);
+        if (!isPasswordValid) return res.status(403).json({ message: 'Invalid password' });
+
+        const users = await usersCollection.find({}, { projection: { _id: 1, username: 1, email: 1 } }).toArray();
+        res.status(200).json(users);
+    };
+
     handler().catch(next);
 });
 

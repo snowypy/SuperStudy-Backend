@@ -1,4 +1,3 @@
-// src/middleware/authMiddleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { MongoClient, ObjectId } from 'mongodb';
 import { verifyPassword } from '../utils';

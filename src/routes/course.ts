@@ -1,4 +1,3 @@
-// src/routes/course.ts
 import express, { Request, Response, NextFunction } from 'express';
 import { MongoClient, ObjectId } from 'mongodb';
 import { AppDataSource } from '../data-source';
